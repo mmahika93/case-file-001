@@ -1,4 +1,4 @@
-# Case File 001: PCAP and OSINT Analysis of a Lumma Stealer Alert 📁
+# Case File 001: PCAP and OSINT Analysis of a Lumma Stealer Alert 📂
 
 Source exercise: [Lumma in the Room-ah (2026-01-31)](https://www.malware-traffic-analysis.net/2026/01/31/index.html) on malware-traffic-analysis.net.
 This repo contains my own analysis only. No PCAP and no malware are included, and all indicators are defanged.
