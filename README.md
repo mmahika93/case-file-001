@@ -3,7 +3,7 @@
 Source exercise: [Lumma in the Room-ah (2026-01-31)](https://www.malware-traffic-analysis.net/2026/01/31/index.html) on malware-traffic-analysis.net.
 This repo contains my own analysis only. No PCAP and no malware are included, and all indicators are defanged.
 
-## Summary
+## Summary📄
 
 1. An IDS alert (ET MALWARE Lumma Stealer Victim Fingerprinting Activity) fired on 2026-01-27 at 23:05 UTC for traffic from 153[.]92[.]1[.]49 over TCP port 80.
 2. In the associated PCAP, the only internal host talking to that IP was 10.1.21.58, identified as DESKTOP-ES9F3ML, logged in as `gwyatt` (Gabriel Wyatt) in the WIN11OFFICE domain.
@@ -11,7 +11,7 @@ This repo contains my own analysis only. No PCAP and no malware are included, an
 4. The domain was 39 days old at the time and had used at least 9 different IPs since December 2025. VirusTotal lists 590 files that contact it, and ThreatFox lists URLs on it under Lumma Stealer.
 5. Confidence: host identification is high. How the host was infected, and whether its malware matches the sample I studied, are not established by this capture.
 
-## Tools and Terms
+## Tools and Terms🔨
  
 Tools: Wireshark, VirusTotal, ThreatFox, URLhaus, crt.sh.
 Every finding has a packet number or a source. 
