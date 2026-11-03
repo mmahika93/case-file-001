@@ -169,11 +169,6 @@ The `/asds` path matches the URL in the sandbox memory of `l72gk.exe`, which lin
 ## Infrastructure link graph📊
  
 ![Link graph](images/12-link-graph.png)
- 
-Graph contents:
- 
-- **Nodes:** victim host, domain controller (DNS), `whooptm[.]cyou`, `whitepepper[.]su`, `153[.]92[.]1[.]49` (highlighted: seen in my PCAP), the other passive DNS IPs, `l72gk.exe`, `whitepepper[.]su/asds`, ThreatFox / Lumma Stealer label
-- **Edges:** victim to `whooptm[.]cyou` ("DNS query, connection unverified"); victim to `whitepepper[.]su` ("DNS query"); `whitepepper[.]su` to `153[.]92[.]1[.]49` ("resolved to, 2026-01-27"); `whitepepper[.]su` to other IPs ("resolved to, passive DNS"); victim to `153[.]92[.]1[.]49` ("HTTP GET/POST /api/set_agent"); `l72gk.exe` to `whitepepper[.]su/asds` ("contacts, sandbox"); ThreatFox to `/asds` and to `whooptm[.]cyou/api` ("tagged Lumma Stealer")
 
 ## MITRE ATT&CK mapping📌
 
