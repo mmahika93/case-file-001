@@ -50,7 +50,7 @@ The host sent the same three-step pattern twice, about 8 seconds apart: packets 
 
 **In plain terms:** the host's browser asked the server for a page. The server answered with a small program (JavaScript) that ran in the browser, collected details about the computer, and sent them back to the server.
 
-![HTTP stream with the script](images/14-http-stream-script.png)
+![HTTP stream with the script](images/13-http-stream-script.png)
 
 **What the script collected** (decoded from the POST body in packet 24601):
  
