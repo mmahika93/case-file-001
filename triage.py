@@ -1,4 +1,6 @@
 import subprocess
+import sys
+from datetime import datetime
 
 pcap = '2026-01-31-traffic-analysis-exercise.pcap'
 alert_ip = '153.92.1.49'
@@ -9,8 +11,7 @@ def run_tshark(display_filter, fields):
     for field in fields:
         command.append('-e')
         command.append(field)
-        
-    result = subprocess.run(command, capture_output=True, text=True,)
+    result = subprocess.run(command, capture_output=True, text=True)
     return result.stdout
 
 
@@ -27,29 +28,69 @@ def get_rows(display_filter, fields):
         rows.append(columns)
     return rows
 
-# display hostname and mac addr
-dhcp_rows = get_rows('dhcp', ['frame.number', 'dhcp.hw.mac_addr', 'dhcp.option.hostname'])
-first = dhcp_rows[0]
-print('Hostname: ' + first[2] + ' (packet number: ' + first[0] + ')')
-print('MAC Address: ' + first[1].split(',')[0])
 
-# display username and source IP
-kerberos_rows = get_rows('kerberos.CNameString', ['frame.number', 'ip.src', 'kerberos.CNameString'])
+def defang(value):
+    return value.replace('.', '[.]')
+
+
+# which internal host talked to the alert IP and what domain did it ask for
+http_rows = get_rows('ip.dst == ' + alert_ip + ' && http.request', ['frame.number', 'ip.src', 'http.host'])
+if len(http_rows) == 0:
+    sys.exit('No HTTP requests to ' + alert_ip + ' found. Stopping.')
+
+http_packet = http_rows[0][0]
+infected_ip = http_rows[0][1]
+alert_domain = http_rows[0][2]
+
+# hostname and MAC for the infected IP only
+hostname = 'not found'
+mac_address = 'not found'
+dhcp_packet = '-'
+dhcp_rows = get_rows('dhcp.option.requested_ip_address == ' + infected_ip, ['frame.number', 'dhcp.hw.mac_addr', 'dhcp.option.hostname'])
+if len(dhcp_rows) > 0:
+    dhcp_packet = dhcp_rows[0][0]
+    # don't pront mac address multiple times and get 1st ocurrence
+    mac_address = dhcp_rows[0][1].split(',')[0]
+    hostname = dhcp_rows[0][2]
+
+# user account logged in from the infected IP only
+username = 'not found'
+kerberos_packet = '-'
+kerberos_rows = get_rows('kerberos.CNameString && ip.src == ' + infected_ip, ['frame.number', 'ip.src', 'kerberos.CNameString'])
 for row in kerberos_rows:
     if not row[2].endswith('$'):
-        print('Username: ' + row[2] + ' from ' + row[1] + ' (packet number: ' + row[0] + ')')
+        kerberos_packet = row[0]
+        username = row[2]
         break
 
-# Domain
-domain_rows = get_rows('ip.addr == ' + alert_ip + '&& http.request', [ 'frame.number', 'http.host'])
-# if the filter doesn't output anything
-if len(domain_rows) > 0:
-    print('Alert Domain: ' + domain_rows[0][1] + ' (packet number: ' + domain_rows[0][0] + ')')
-else:
-    print('Alert Domain: not found')
+# print summary
+print('Infected IP: ' + infected_ip)
+print('Alert Domain: ' + alert_domain)
+print('Hostname: ' + hostname)
+print('MAC Address: ' + mac_address)
+print('Username: ' + username)
 
-infectedip_rows = get_rows('ip.addr == ' + alert_ip + '&& http.request', [ 'frame.number', 'ip.src'])
-if len(infectedip_rows) > 0:
-    print('Infected IP: ' + infectedip_rows[0][1] + ' (packet number: ' + infectedip_rows[0][0] + ')')
-else:
-    print('Infected IP: not found')
+# build the ticket
+now = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+ticket = ''
+ticket += '# Incident Ticket: Suspicious HTTP traffic to ' + defang(alert_ip) + '\n\n'
+ticket += '**Generated:** ' + now + ' by triage.py\n\n'
+ticket += '**Source PCAP:** ' + pcap + '\n\n'
+ticket += '**Status:** Needs analyst review\n\n'
+ticket += '## Findings\n\n'
+ticket += '| Field | Value | Evidence (packet) |\n'
+ticket += '|---|---|---|\n'
+ticket += '| Alert IP | ' + defang(alert_ip) + ' | IDS alert |\n'
+ticket += '| Alert domain | ' + defang(alert_domain) + ' | ' + http_packet + ' |\n'
+ticket += '| Infected IP | ' + infected_ip + ' | ' + http_packet + ' |\n'
+ticket += '| Hostname | ' + hostname + ' | ' + dhcp_packet + ' |\n'
+ticket += '| MAC address | ' + mac_address + ' | ' + dhcp_packet + ' |\n'
+ticket += '| User account | ' + username + ' | ' + kerberos_packet + ' |\n\n'
+ticket += 'Automated output. External indicators are defanged. Do not escalate without verification._\n'
+
+# write the ticket to a file
+with open('ticket.md', 'w') as f:
+    f.write(ticket)
+
+print('Ticket written to ticket.md')
