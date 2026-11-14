@@ -1,6 +1,8 @@
 import subprocess
 
 pcap = '2026-01-31-traffic-analysis-exercise.pcap'
+alert_ip = '153.92.1.49'
+
 
 def run_tshark(display_filter, fields):
     command = ['tshark', '-r', pcap, '-Y', display_filter, '-T', 'fields']
@@ -39,9 +41,15 @@ for row in kerberos_rows:
         break
 
 # Domain
-domain_rows = get_rows('ip.addr == 153.92.1.49 && http.request', [ 'frame.number', 'http.host'])
+domain_rows = get_rows('ip.addr == ' + alert_ip + '&& http.request', [ 'frame.number', 'http.host'])
 # if the filter doesn't output anything
 if len(domain_rows) > 0:
     print('Alert Domain: ' + domain_rows[0][1] + ' (packet number: ' + domain_rows[0][0] + ')')
 else:
     print('Alert Domain: not found')
+
+infectedip_rows = get_rows('ip.addr == ' + alert_ip + '&& http.request', [ 'frame.number', 'ip.src'])
+if len(infectedip_rows) > 0:
+    print('Infected IP: ' + infectedip_rows[0][1] + ' (packet number: ' + infectedip_rows[0][0] + ')')
+else:
+    print('Infected IP: not found')
