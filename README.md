@@ -186,6 +186,23 @@ The `/asds` path matches the URL in the sandbox memory of `l72gk.exe`, which lin
  
 ![MITRE tags](images/10-vt-mitre.png)
 
+## Phase 3: Automated Triage 🤖
+
+`triage.py` automates my Phase 1 analysis. Given the PCAP and the alert IP, it does the following:
+
+1. Finds the internal host that contacted the alert IP, and the domain it requested
+2. Uses that host's IP to find its hostname, MAC address, and user account
+3. Looks up the domain and alert IP on VirusTotal through its API
+4. Writes a structured incident ticket ([example-ticket.md](example-ticket.md)) with packet numbers as evidence
+
+**Validation:** the script's output matches my manual Phase 1 findings (10.1.21.58, DESKTOP-ES9F3ML, 00:21:5d:c8:0e:f2, gwyatt, whitepepper[.]su, same packet numbers).
+
+**Safety:** the VirusTotal API key is read from an environment variable and is never stored in the code. External indicators in the ticket are defanged, and the ticket is marked for analyst review.
+
+**How to Run:** requires tshark and `python3-requests`. Set `VT_API_KEY`, then run `python3 triage.py` in the folder with the PCAP.
+
+**Limitations:** it only checks HTTP traffic and takes the first match for each question, and the full name (SAMR) is not automated yet.
+
 ## How I would detect this🕵️
  
 1. **Content match on the check-in:** alert on HTTP POSTs to `/api/set_agent` with `act=log` and a body containing `webgl=`, `canvas=`, and `fonts=` fields. A normal site does not post a full browser fingerprint to an API path like this.
