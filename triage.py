@@ -1,9 +1,12 @@
 import subprocess
 import sys
+import requests
+import os
 from datetime import datetime
 
 pcap = '2026-01-31-traffic-analysis-exercise.pcap'
 alert_ip = '153.92.1.49'
+api_key = os.environ.get('VT_API_KEY') # get api key from environment
 
 
 def run_tshark(display_filter, fields):
@@ -31,6 +34,26 @@ def get_rows(display_filter, fields):
 
 def defang(value):
     return value.replace('.', '[.]')
+
+def vt_lookup(kind, value):
+    # kind is 'domains' or 'ip_addresses'
+    if api_key is None:
+        return 'not checked (no API key set)'
+    url = 'https://www.virustotal.com/api/v3/' + kind + '/' + value
+    headers = {'x-apikey': api_key}
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return 'lookup failed (status ' + str(response.status_code) + ')'
+    
+    #get dictionary jason data from the response, which is a dictionary with keys 'data' and 'meta'
+    data = response.json()
+    stats = data['data']['attributes']['last_analysis_stats']
+    malicious = stats['malicious']
+    # out of score
+    total = 0
+    for count in stats.values():
+        total += count
+    return str(malicious) + '/' + str(total) + ' engines flag as malicious'
 
 
 # which internal host talked to the alert IP and what domain did it ask for
@@ -63,16 +86,20 @@ for row in kerberos_rows:
         username = row[2]
         break
 
-# print summary
+# perform VirusTotal lookup for the alert IP and domain
+vt_domain = vt_lookup('domains', alert_domain)
+vt_ip = vt_lookup('ip_addresses', alert_ip)
+now = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+# Print a summary 
 print('Infected IP: ' + infected_ip)
-print('Alert Domain: ' + alert_domain)
+print('Alert Domain: ' + alert_domain + ' (VirusTotal: ' + vt_domain + ')')
+print('Alert IP VirusTotal: ' + vt_ip)
 print('Hostname: ' + hostname)
 print('MAC Address: ' + mac_address)
 print('Username: ' + username)
 
-# build the ticket
-now = datetime.now().strftime('%Y-%m-%d %H:%M')
-
+# Step 5: build the ticket
 ticket = ''
 ticket += '# Incident Ticket: Suspicious HTTP traffic to ' + defang(alert_ip) + '\n\n'
 ticket += '**Generated:** ' + now + ' by triage.py\n\n'
@@ -87,9 +114,14 @@ ticket += '| Infected IP | ' + infected_ip + ' | ' + http_packet + ' |\n'
 ticket += '| Hostname | ' + hostname + ' | ' + dhcp_packet + ' |\n'
 ticket += '| MAC address | ' + mac_address + ' | ' + dhcp_packet + ' |\n'
 ticket += '| User account | ' + username + ' | ' + kerberos_packet + ' |\n\n'
-ticket += 'Automated output. External indicators are defanged. Do not escalate without verification._\n'
+ticket += '## Enrichment (VirusTotal, checked ' + now + ')\n\n'
+ticket += '| Indicator | Result |\n'
+ticket += '|---|---|\n'
+ticket += '| ' + defang(alert_domain) + ' | ' + vt_domain + ' |\n'
+ticket += '| ' + defang(alert_ip) + ' | ' + vt_ip + ' |\n\n'
+ticket += '_Automated output. External indicators are defanged. Detection counts change over time. Do not escalate without verification._\n'
 
-# write the ticket to a file
+#write the ticket to a file
 with open('ticket.md', 'w') as f:
     f.write(ticket)
 
